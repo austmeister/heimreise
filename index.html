@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Heimreise">
+<link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
 <style>
   :root{
     --teal:#1F4E5F; --teal-d:#163b48; --orange:#F2A65A; --orange-d:#C0532B;
@@ -61,6 +62,11 @@
   /* map */
   figure{margin:0}
   .map{width:100%; display:block; border-radius:12px; border:1px solid var(--line)}
+  .mapbox{position:relative}
+  .leaflet-map{height:300px; width:100%; border-radius:12px; border:1px solid var(--line); z-index:0; background:#e8edf0}
+  .leaflet-map .leaflet-tile-pane{filter:saturate(.95)}
+  .mlbl{background:#1F4E5F; color:#fff; border:none; font-size:11px; font-weight:600; padding:2px 6px; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,.3)}
+  .mlbl:before{border-top-color:#1F4E5F}
   figcaption{font-size:12px; color:var(--muted); margin-top:5px; text-align:center}
   a.maps{display:inline-flex; align-items:center; gap:6px; color:var(--orange-d); font-weight:600; font-size:14px; text-decoration:none; margin-top:10px}
   a.maps:after{content:"↗"; font-size:12px}
@@ -121,7 +127,10 @@
   <div class="card pad">
     <div class="cost"><b>Kosten (einfache Fahrt):</b> Sprit ~95 € (1.080 km · 5 L/100 km · ~1,80 €/L) + Maut ~65–75 € (nur FR-Autobahn) = <b>~160–170 €</b>. Route umgeht die Schweiz (keine Vignette), DE-Autobahn mautfrei.</div>
     <figure>
-      <img class="map" src="./maps/overview.jpg" alt="Gesamtroute Apt nach Nürnberg" loading="lazy">
+      <div class="mapbox" id="mb-overview">
+        <img class="map" src="./maps/overview.jpg" alt="Gesamtroute Apt nach Nürnberg" loading="lazy">
+        <div class="leaflet-map" hidden></div>
+      </div>
       <figcaption>Apt → Mulhouse → Nürnberg · © OpenStreetMap-Mitwirkende</figcaption>
     </figure>
     <a class="maps" href="https://www.google.com/maps/dir/Apt,+France/Mulhouse,+France/N%C3%BCrnberg,+Germany" target="_blank" rel="noopener">In Google Maps öffnen</a>
@@ -142,7 +151,10 @@
   <h2>Tag 1 · Apt → Mulhouse <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:13px">&nbsp;~650 km</span></h2>
   <div class="card pad">
     <figure>
-      <img class="map" src="./maps/tag1.jpg" alt="Route Apt nach Mulhouse" loading="lazy">
+      <div class="mapbox" id="mb-tag1">
+        <img class="map" src="./maps/tag1.jpg" alt="Route Apt nach Mulhouse" loading="lazy">
+        <div class="leaflet-map" hidden></div>
+      </div>
       <figcaption>© OpenStreetMap-Mitwirkende</figcaption>
     </figure>
     <a class="maps" href="https://www.google.com/maps/dir/Apt,+France/Mulhouse,+France" target="_blank" rel="noopener">In Google Maps öffnen</a>
@@ -151,7 +163,10 @@
   <h2>Tag 2 · Mulhouse → Nürnberg <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:13px">&nbsp;~430 km</span></h2>
   <div class="card pad">
     <figure>
-      <img class="map" src="./maps/tag2.jpg" alt="Route Mulhouse nach Nürnberg" loading="lazy">
+      <div class="mapbox" id="mb-tag2">
+        <img class="map" src="./maps/tag2.jpg" alt="Route Mulhouse nach Nürnberg" loading="lazy">
+        <div class="leaflet-map" hidden></div>
+      </div>
       <figcaption>© OpenStreetMap-Mitwirkende</figcaption>
     </figure>
     <a class="maps" href="https://www.google.com/maps/dir/Mulhouse,+France/N%C3%BCrnberg,+Germany" target="_blank" rel="noopener">In Google Maps öffnen</a>
@@ -180,6 +195,7 @@
 
 <div class="offline-pill" id="offline-pill">Offline · App läuft aus dem Cache</div>
 
+<script src="./vendor/leaflet/leaflet.js"></script>
 <script>
 // ---- Schedule (local time, CEST). month is 0-indexed (5 = June) ----
 const STOPS = [
@@ -295,6 +311,57 @@ tick();
 const pill=document.getElementById('offline-pill');
 function netState(){ pill.classList.toggle('show', !navigator.onLine); }
 window.addEventListener('online',netState); window.addEventListener('offline',netState); netState();
+
+// ---- Interactive maps (online) with static-image fallback (offline) ----
+const MAPBOXES=[
+  {id:'mb-overview', route:'./maps/route-overview.json',
+   markers:[[43.8761,5.3960,'Apt'],[47.7508,7.3359,'Mulhouse'],[49.4521,11.0767,'Nürnberg']]},
+  {id:'mb-tag1', route:'./maps/route-tag1.json',
+   markers:[[43.8761,5.3960,'Apt'],[47.7508,7.3359,'Mulhouse']]},
+  {id:'mb-tag2', route:'./maps/route-tag2.json',
+   markers:[[47.7508,7.3359,'Mulhouse'],[49.4521,11.0767,'Nürnberg']]},
+];
+let mapsInited=false;
+async function initMaps(){
+  if(mapsInited || typeof L==='undefined' || !navigator.onLine) return;
+  mapsInited=true;
+  for(const m of MAPBOXES){
+    const box=document.getElementById(m.id); if(!box) continue;
+    const holder=box.querySelector('.leaflet-map'), img=box.querySelector('.map');
+    try{
+      holder.hidden=false;
+      const map=L.map(holder,{scrollWheelZoom:false, attributionControl:true});
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18, attribution:'© OpenStreetMap'}).addTo(map);
+      const gj=await fetch(m.route).then(r=>r.json());
+      const latlngs=(gj.coordinates||[]).map(c=>[c[1],c[0]]);
+      const line=L.polyline(latlngs,{color:'#C0532B', weight:5, opacity:.85}).addTo(map);
+      m.markers.forEach(([la,lo,lb],i)=>{
+        const c=i===0?'#1d7a44':(i===m.markers.length-1?'#1F4E5F':'#F2A65A');
+        L.circleMarker([la,lo],{radius:7,color:'#fff',weight:2,fillColor:c,fillOpacity:1})
+          .addTo(map).bindTooltip(lb,{permanent:true,direction:'top',className:'mlbl',offset:[0,-4]});
+      });
+      map.invalidateSize();
+      const b=line.getBounds();
+      if(b && b.isValid()) map.fitBounds(b,{padding:[26,26]});
+      else map.setView([m.markers[0][0], m.markers[0][1]], 6);
+      img.hidden=true;
+      setTimeout(()=>map.invalidateSize(),200);
+      box._map=map;
+    }catch(e){ console.warn('map',m.id,e); holder.hidden=true; img.hidden=false; }
+  }
+}
+function teardownMaps(){
+  MAPBOXES.forEach(m=>{
+    const box=document.getElementById(m.id); if(!box) return;
+    if(box._map){ box._map.remove(); box._map=null; }
+    const holder=box.querySelector('.leaflet-map'), img=box.querySelector('.map');
+    if(holder) holder.hidden=true; if(img) img.hidden=false;
+  });
+  mapsInited=false;
+}
+window.addEventListener('load',initMaps);
+window.addEventListener('online',initMaps);
+window.addEventListener('offline',teardownMaps);
 
 // ---- Service worker ----
 if('serviceWorker' in navigator){

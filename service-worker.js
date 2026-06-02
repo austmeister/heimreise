@@ -1,6 +1,6 @@
 // Heimreise PWA service worker — cache-first, offline-ready.
 // Bump CACHE when assets change to force an update.
-const CACHE = 'heimreise-v1';
+const CACHE = 'heimreise-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,11 @@ const ASSETS = [
   './maps/overview.jpg',
   './maps/tag1.jpg',
   './maps/tag2.jpg',
+  './maps/route-overview.json',
+  './maps/route-tag1.json',
+  './maps/route-tag2.json',
+  './vendor/leaflet/leaflet.css',
+  './vendor/leaflet/leaflet.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-512.png'
