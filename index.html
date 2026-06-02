@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Heimreise">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
+<script>/* früh setzen, damit online gar kein statisches Bild aufblitzt */ if(navigator.onLine)document.documentElement.classList.add('online');</script>
 <style>
   :root{
     --teal:#1F4E5F; --teal-d:#163b48; --orange:#F2A65A; --orange-d:#C0532B;
@@ -63,7 +64,17 @@
   figure{margin:0}
   .map{width:100%; display:block; border-radius:12px; border:1px solid var(--line)}
   .mapbox{position:relative}
-  .leaflet-map{height:300px; width:100%; border-radius:12px; border:1px solid var(--line); z-index:0; background:#e8edf0}
+  .mapbox .leaflet-map{display:none; height:300px; width:100%; border-radius:12px; border:1px solid var(--line); z-index:0; background:#e8edf0}
+  .mapbox .map{display:block}
+  /* online: zeige nur die interaktive Karte, blende das statische Bild aus */
+  html.online .mapbox .map{display:none}
+  html.online .mapbox .leaflet-map{display:block}
+  /* wenn eine interaktive Karte fehlschlägt: zurück zum Bild */
+  html.online .mapbox.map-failed .map{display:block}
+  html.online .mapbox.map-failed .leaflet-map{display:none}
+  /* Ladezustand, solange Leaflet die Karte noch nicht gefüllt hat */
+  html.online .mapbox .leaflet-map:empty{display:flex; align-items:center; justify-content:center}
+  html.online .mapbox .leaflet-map:empty::after{content:"Karte lädt…"; color:var(--muted); font-size:13px}
   .leaflet-map .leaflet-tile-pane{filter:saturate(.95)}
   .mlbl{background:#1F4E5F; color:#fff; border:none; font-size:11px; font-weight:600; padding:2px 6px; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,.3)}
   .mlbl:before{border-top-color:#1F4E5F}
@@ -129,7 +140,7 @@
     <figure>
       <div class="mapbox" id="mb-overview">
         <img class="map" src="./maps/overview.jpg" alt="Gesamtroute Apt nach Nürnberg" loading="lazy">
-        <div class="leaflet-map" hidden></div>
+        <div class="leaflet-map"></div>
       </div>
       <figcaption>Apt → Mulhouse → Nürnberg · © OpenStreetMap-Mitwirkende</figcaption>
     </figure>
@@ -153,7 +164,7 @@
     <figure>
       <div class="mapbox" id="mb-tag1">
         <img class="map" src="./maps/tag1.jpg" alt="Route Apt nach Mulhouse" loading="lazy">
-        <div class="leaflet-map" hidden></div>
+        <div class="leaflet-map"></div>
       </div>
       <figcaption>© OpenStreetMap-Mitwirkende</figcaption>
     </figure>
@@ -165,7 +176,7 @@
     <figure>
       <div class="mapbox" id="mb-tag2">
         <img class="map" src="./maps/tag2.jpg" alt="Route Mulhouse nach Nürnberg" loading="lazy">
-        <div class="leaflet-map" hidden></div>
+        <div class="leaflet-map"></div>
       </div>
       <figcaption>© OpenStreetMap-Mitwirkende</figcaption>
     </figure>
@@ -323,13 +334,16 @@ const MAPBOXES=[
 ];
 let mapsInited=false;
 async function initMaps(){
-  if(mapsInited || typeof L==='undefined' || !navigator.onLine) return;
+  if(mapsInited) return;
+  // online wird per CSS-Klasse gesteuert; ohne Netz oder ohne Leaflet -> statische Bilder
+  if(!navigator.onLine || typeof L==='undefined'){ document.documentElement.classList.remove('online'); return; }
   mapsInited=true;
+  document.documentElement.classList.add('online');
   for(const m of MAPBOXES){
     const box=document.getElementById(m.id); if(!box) continue;
-    const holder=box.querySelector('.leaflet-map'), img=box.querySelector('.map');
+    box.classList.remove('map-failed');
+    const holder=box.querySelector('.leaflet-map');
     try{
-      holder.hidden=false;
       const map=L.map(holder,{scrollWheelZoom:false, attributionControl:true});
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18, attribution:'© OpenStreetMap'}).addTo(map);
       const gj=await fetch(m.route).then(r=>r.json());
@@ -344,18 +358,17 @@ async function initMaps(){
       const b=line.getBounds();
       if(b && b.isValid()) map.fitBounds(b,{padding:[26,26]});
       else map.setView([m.markers[0][0], m.markers[0][1]], 6);
-      img.hidden=true;
       setTimeout(()=>map.invalidateSize(),200);
       box._map=map;
-    }catch(e){ console.warn('map',m.id,e); holder.hidden=true; img.hidden=false; }
+    }catch(e){ console.warn('map',m.id,e); box.classList.add('map-failed'); }
   }
 }
 function teardownMaps(){
+  document.documentElement.classList.remove('online'); // -> statische Bilder
   MAPBOXES.forEach(m=>{
     const box=document.getElementById(m.id); if(!box) return;
     if(box._map){ box._map.remove(); box._map=null; }
-    const holder=box.querySelector('.leaflet-map'), img=box.querySelector('.map');
-    if(holder) holder.hidden=true; if(img) img.hidden=false;
+    box.classList.remove('map-failed');
   });
   mapsInited=false;
 }
@@ -363,10 +376,17 @@ window.addEventListener('load',initMaps);
 window.addEventListener('online',initMaps);
 window.addEventListener('offline',teardownMaps);
 
-// ---- Service worker ----
+// ---- Service worker (auto-update) ----
 if('serviceWorker' in navigator){
+  let refreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing) return; refreshing=true; location.reload();
+  });
   window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('./service-worker.js').catch(e=>console.warn('SW',e));
+    navigator.serviceWorker.register('./service-worker.js').then(reg=>{
+      reg.update();                                   // beim Öffnen auf neue Version prüfen
+      setInterval(()=>reg.update(), 60*60*1000);      // stündlich prüfen, solange offen
+    }).catch(e=>console.warn('SW',e));
   });
 }
 </script>
