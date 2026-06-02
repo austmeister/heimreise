@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Heimreise · Apt → Nürnberg</title>
+<meta name="theme-color" content="#1F4E5F">
+<meta name="description" content="Reiseplan Apt (Provence) → Nürnberg mit Live-Standort nach Uhrzeit. Offline verfügbar.">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Heimreise">
+<style>
+  :root{
+    --teal:#1F4E5F; --teal-d:#163b48; --orange:#F2A65A; --orange-d:#C0532B;
+    --ink:#1a1a1a; --muted:#667; --line:#e4e9ec; --bg:#f4f6f7; --card:#fff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.5;
+    -webkit-font-smoothing:antialiased; padding-bottom:env(safe-area-inset-bottom);
+  }
+  .wrap{max-width:560px; margin:0 auto; padding:0 16px 40px}
+  /* Header */
+  header{
+    background:linear-gradient(160deg,var(--teal),var(--teal-d)); color:#fff;
+    padding:calc(env(safe-area-inset-top) + 22px) 16px 20px; text-align:center;
+    border-bottom:4px solid var(--orange);
+  }
+  header h1{margin:0; font-size:30px; letter-spacing:.5px}
+  header .sub{opacity:.9; font-size:14px; margin-top:4px}
+  header .who{margin-top:10px; font-size:13px; opacity:.85}
+  header .who b{font-weight:600}
+  /* Live status */
+  .live{
+    background:var(--card); border-radius:16px; margin:-26px auto 18px; max-width:528px;
+    box-shadow:0 6px 22px rgba(20,50,65,.13); padding:16px 18px; position:relative; z-index:2;
+  }
+  .live .dotrow{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px}
+  .pulse{width:9px;height:9px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 0 rgba(242,166,90,.6);animation:p 2s infinite}
+  @keyframes p{0%{box-shadow:0 0 0 0 rgba(242,166,90,.6)}70%{box-shadow:0 0 0 9px rgba(242,166,90,0)}100%{box-shadow:0 0 0 0 rgba(242,166,90,0)}}
+  .live .big{font-size:18px; font-weight:650; margin:7px 0 2px; color:var(--teal)}
+  .live .small{font-size:13.5px; color:var(--muted)}
+  .live .bar{height:7px; background:var(--line); border-radius:99px; margin-top:12px; overflow:hidden}
+  .live .bar i{display:block; height:100%; width:0; background:linear-gradient(90deg,var(--orange),var(--orange-d)); border-radius:99px; transition:width .6s}
+  /* chips */
+  .chips{display:flex; gap:8px; flex-wrap:wrap; margin:0 0 18px}
+  .chip{background:var(--card); border:1px solid var(--line); border-radius:99px; padding:6px 12px; font-size:13px; box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .chip b{color:var(--teal)}
+  /* sections */
+  h2{font-size:15px; text-transform:uppercase; letter-spacing:1px; color:var(--teal); margin:26px 0 10px; display:flex; align-items:center; gap:8px}
+  h2:before{content:""; width:18px; height:3px; background:var(--orange); border-radius:2px}
+  .card{background:var(--card); border-radius:14px; box-shadow:0 2px 10px rgba(20,50,65,.06); overflow:hidden}
+  .pad{padding:14px 16px}
+  .cost{background:#fff7ef; border:1px solid #f6dcc1; border-radius:12px; padding:12px 14px; font-size:14px; margin-bottom:6px}
+  .cost b{color:var(--orange-d)}
+  /* map */
+  figure{margin:0}
+  .map{width:100%; display:block; border-radius:12px; border:1px solid var(--line)}
+  figcaption{font-size:12px; color:var(--muted); margin-top:5px; text-align:center}
+  a.maps{display:inline-flex; align-items:center; gap:6px; color:var(--orange-d); font-weight:600; font-size:14px; text-decoration:none; margin-top:10px}
+  a.maps:after{content:"↗"; font-size:12px}
+  /* timeline */
+  .tl{position:relative; margin:6px 0 4px; padding-left:6px}
+  .rail{position:absolute; left:22px; width:3px; background:var(--line); border-radius:2px; z-index:0}
+  .rail-done{position:absolute; left:22px; width:3px; background:linear-gradient(180deg,var(--orange),var(--orange-d)); border-radius:2px; z-index:1; transition:height .6s, top .6s}
+  .marker{position:absolute; left:11.5px; width:24px; height:24px; z-index:4; transition:top .6s; pointer-events:none}
+  .marker:before{content:""; position:absolute; inset:0; border-radius:50%; background:var(--teal); border:3px solid #fff; box-shadow:0 2px 8px rgba(20,50,65,.4)}
+  .marker:after{content:""; position:absolute; inset:-6px; border-radius:50%; border:2px solid var(--orange); animation:p 2s infinite}
+  .dayhdr{font-size:13px; font-weight:700; color:var(--teal); margin:14px 0 8px; padding-left:40px; text-transform:uppercase; letter-spacing:.6px}
+  .station{position:relative; display:flex; gap:14px; padding:9px 0; z-index:2}
+  .station .pt{position:absolute; left:16px; top:15px; width:15px; height:15px; border-radius:50%; background:#fff; border:3px solid var(--line); z-index:3}
+  .station.passed .pt{border-color:var(--orange); background:var(--orange)}
+  .station .body{margin-left:42px; flex:1}
+  .station .tm{font-variant-numeric:tabular-nums; font-weight:700; color:var(--ink); font-size:15px}
+  .station .lb{font-weight:600}
+  .station .nt{font-size:13px; color:var(--muted)}
+  .station .km{font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums}
+  .station.next .lb{color:var(--orange-d)}
+  /* lodging */
+  .booked{display:inline-block; background:#e7f6ec; color:#1d7a44; font-size:12px; font-weight:700; padding:3px 9px; border-radius:99px; margin-bottom:8px}
+  .lodge h3{margin:.1em 0 .3em; font-size:17px}
+  ul.facts{margin:.4em 0; padding-left:18px; font-size:14px}
+  ul.facts li{margin:3px 0}
+  a.btn{display:inline-block; background:var(--teal); color:#fff; text-decoration:none; padding:10px 16px; border-radius:10px; font-weight:600; font-size:14px; margin-top:8px}
+  footer{font-size:11.5px; color:var(--muted); text-align:center; margin-top:26px; line-height:1.6}
+  footer a{color:var(--muted)}
+  .offline-pill{position:fixed; bottom:14px; left:50%; transform:translateX(-50%); background:var(--teal); color:#fff; font-size:12.5px; padding:7px 14px; border-radius:99px; box-shadow:0 3px 12px rgba(0,0,0,.25); opacity:0; transition:opacity .3s; z-index:50}
+  .offline-pill.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>Heimreise</h1>
+  <div class="sub">Apt (Provence) → Nürnberg</div>
+  <div class="who"><b>Leela</b> · <b>Agnieszka</b> · <b>David</b> &nbsp;•&nbsp; 3.–4. Juni 2026</div>
+</header>
+
+<div class="wrap">
+
+  <!-- LIVE STATUS -->
+  <div class="live">
+    <div class="dotrow"><span class="pulse"></span><span id="live-clock">Live-Standort</span></div>
+    <div class="big" id="live-big">…</div>
+    <div class="small" id="live-small"></div>
+    <div class="bar"><i id="live-bar"></i></div>
+  </div>
+
+  <div class="chips">
+    <span class="chip"><b>~1.080 km</b> gesamt</span>
+    <span class="chip"><b>~10 h</b> Fahrt</span>
+    <span class="chip"><b>~160–170 €</b> Sprit+Maut</span>
+  </div>
+
+  <!-- OVERVIEW MAP -->
+  <h2>Gesamtroute</h2>
+  <div class="card pad">
+    <div class="cost"><b>Kosten (einfache Fahrt):</b> Sprit ~95 € (1.080 km · 5 L/100 km · ~1,80 €/L) + Maut ~65–75 € (nur FR-Autobahn) = <b>~160–170 €</b>. Route umgeht die Schweiz (keine Vignette), DE-Autobahn mautfrei.</div>
+    <figure>
+      <img class="map" src="./maps/overview.jpg" alt="Gesamtroute Apt nach Nürnberg" loading="lazy">
+      <figcaption>Apt → Mulhouse → Nürnberg · © OpenStreetMap-Mitwirkende</figcaption>
+    </figure>
+    <a class="maps" href="https://www.google.com/maps/dir/Apt,+France/Mulhouse,+France/N%C3%BCrnberg,+Germany" target="_blank" rel="noopener">In Google Maps öffnen</a>
+  </div>
+
+  <!-- LIVE TIMELINE -->
+  <h2>Zeitplan &amp; Standort</h2>
+  <div class="card pad">
+    <div class="tl" id="tl">
+      <div class="rail" id="rail"></div>
+      <div class="rail-done" id="rail-done"></div>
+      <div class="marker" id="marker"></div>
+      <!-- stations injected by JS -->
+    </div>
+  </div>
+
+  <!-- DAY MAPS -->
+  <h2>Tag 1 · Apt → Mulhouse <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:13px">&nbsp;~650 km</span></h2>
+  <div class="card pad">
+    <figure>
+      <img class="map" src="./maps/tag1.jpg" alt="Route Apt nach Mulhouse" loading="lazy">
+      <figcaption>© OpenStreetMap-Mitwirkende</figcaption>
+    </figure>
+    <a class="maps" href="https://www.google.com/maps/dir/Apt,+France/Mulhouse,+France" target="_blank" rel="noopener">In Google Maps öffnen</a>
+  </div>
+
+  <h2>Tag 2 · Mulhouse → Nürnberg <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:13px">&nbsp;~430 km</span></h2>
+  <div class="card pad">
+    <figure>
+      <img class="map" src="./maps/tag2.jpg" alt="Route Mulhouse nach Nürnberg" loading="lazy">
+      <figcaption>© OpenStreetMap-Mitwirkende</figcaption>
+    </figure>
+    <a class="maps" href="https://www.google.com/maps/dir/Mulhouse,+France/N%C3%BCrnberg,+Germany" target="_blank" rel="noopener">In Google Maps öffnen</a>
+  </div>
+
+  <!-- LODGING -->
+  <h2>Übernachtung in Mulhouse</h2>
+  <div class="card pad lodge">
+    <span class="booked">✓ Gebucht</span>
+    <h3>Joli T2 · centre historique</h3>
+    <ul class="facts">
+      <li><b>62 €</b> Gesamtpreis (inkl. Gebühren)</li>
+      <li>Self-Check-in über Schlüsselbox — ideal bei später Ankunft</li>
+      <li>4,92 / 5 (62 Bewertungen), Altstadt</li>
+      <li>Parken kostenpflichtig in der Nähe</li>
+    </ul>
+    <a class="btn" href="https://www.airbnb.fr/rooms/1521559511221131362?adults=2&check_in=2026-06-03&check_out=2026-06-04" target="_blank" rel="noopener">Buchung öffnen</a>
+  </div>
+
+  <footer>
+    Karten © OpenStreetMap-Mitwirkende · Distanzen per Auto-Routing.<br>
+    Zeiten inkl. realistischer Pausen, ohne Stau. Standort wird aus der Uhrzeit deines Geräts geschätzt.<br>
+    Funktioniert offline · zum Startbildschirm hinzufügen für App-Modus.
+  </footer>
+</div>
+
+<div class="offline-pill" id="offline-pill">Offline · App läuft aus dem Cache</div>
+
+<script>
+// ---- Schedule (local time, CEST). month is 0-indexed (5 = June) ----
+const STOPS = [
+  {d:1, t:[2026,5,3,16,30], km:0,    label:"Apt",                 note:"Abfahrt"},
+  {d:1, t:[2026,5,3,18,30], km:150,  label:"Montélimar",          note:"Pause · Kaffee"},
+  {d:1, t:[2026,5,3,20,30], km:370,  label:"Lyon / Mâcon",        note:"Abendessen"},
+  {d:1, t:[2026,5,3,22,15], km:520,  label:"Besançon",            note:"kurze Pause"},
+  {d:1, t:[2026,5,3,23,45], km:650,  label:"Mulhouse",            note:"Ankunft · Übernachtung"},
+  {d:2, t:[2026,5,4, 9,30], km:650,  label:"Mulhouse",            note:"Abfahrt"},
+  {d:2, t:[2026,5,4,10,45], km:780,  label:"Karlsruhe",           note:"Pause"},
+  {d:2, t:[2026,5,4,13, 0], km:950,  label:"Stuttgart / Heilbronn",note:"Mittagspause"},
+  {d:2, t:[2026,5,4,14,30], km:1080, label:"Nürnberg",            note:"Ankunft 🎯"},
+];
+const OVERNIGHT_FROM = 4; // index of Mulhouse-Ankunft -> next is Abfahrt
+STOPS.forEach(s => s.date = new Date(s.t[0],s.t[1],s.t[2],s.t[3],s.t[4],0,0));
+
+// ---- Build timeline DOM ----
+const tl = document.getElementById('tl');
+function pad(n){return (n<10?'0':'')+n;}
+function hhmm(d){return pad(d.getHours())+':'+pad(d.getMinutes());}
+let lastDay = 0;
+STOPS.forEach((s,i)=>{
+  if(s.d!==lastDay){
+    const h=document.createElement('div'); h.className='dayhdr';
+    h.textContent = s.d===1 ? 'Mittwoch, 3. Juni' : 'Donnerstag, 4. Juni';
+    tl.appendChild(h); lastDay=s.d;
+  }
+  const row=document.createElement('div'); row.className='station'; row.dataset.i=i;
+  row.innerHTML = '<span class="pt"></span><div class="body">'+
+    '<div class="tm">'+hhmm(s.date)+' <span class="km">· ~'+s.km+' km</span></div>'+
+    '<div class="lb">'+s.label+'</div>'+
+    '<div class="nt">'+s.note+'</div></div>';
+  tl.appendChild(row);
+});
+
+// ---- Live computation ----
+const elBig=document.getElementById('live-big'), elSmall=document.getElementById('live-small'),
+      elBar=document.getElementById('live-bar'), elClock=document.getElementById('live-clock'),
+      marker=document.getElementById('marker'), rail=document.getElementById('rail'),
+      railDone=document.getElementById('rail-done');
+
+function fmtDur(ms){
+  let m=Math.max(0,Math.round(ms/60000));
+  const h=Math.floor(m/60); m=m%60;
+  if(h>0) return h+' h '+pad(m)+' min';
+  return m+' min';
+}
+function stationCenters(){
+  const base=tl.getBoundingClientRect().top;
+  return [...tl.querySelectorAll('.station')].map(el=>{
+    const r=el.getBoundingClientRect();
+    return r.top - base + el.querySelector('.pt').offsetHeight/2 + 12;
+  });
+}
+function update(){
+  const now=new Date();
+  elClock.textContent = 'Live · '+hhmm(now)+' Uhr';
+  const first=STOPS[0].date, last=STOPS[STOPS.length-1].date;
+  const centers=stationCenters();
+  let markerTop, frac=0, segIdx=-1;
+
+  if(now < first){
+    markerTop=centers[0]; segIdx=-1;
+    elBig.textContent='Abfahrt um '+hhmm(first);
+    elSmall.textContent='Los geht’s in '+fmtDur(first-now)+' ab Apt.';
+  } else if(now >= last){
+    markerTop=centers[centers.length-1]; segIdx=STOPS.length-1;
+    elBig.textContent='Angekommen in Nürnberg 🎉';
+    elSmall.textContent='Gute Heimreise gewesen!';
+  } else {
+    for(let i=0;i<STOPS.length-1;i++){
+      if(now>=STOPS[i].date && now<STOPS[i+1].date){ segIdx=i; break; }
+    }
+    const a=STOPS[segIdx], b=STOPS[segIdx+1];
+    frac=(now-a.date)/(b.date-a.date);
+    markerTop=centers[segIdx]+frac*(centers[segIdx+1]-centers[segIdx]);
+    if(segIdx===OVERNIGHT_FROM){
+      elBig.textContent='Übernachtung in Mulhouse 🛏️';
+      elSmall.textContent='Weiterfahrt um '+hhmm(b.date)+' · in '+fmtDur(b.date-now)+'.';
+    } else {
+      const km=Math.round((a.km+frac*(b.km-a.km))/10)*10;
+      elBig.textContent='Unterwegs Richtung '+b.label;
+      elSmall.textContent='~km '+km+' · nächste Station ('+b.note.toLowerCase()+') in '+fmtDur(b.date-now)+'.';
+    }
+  }
+
+  // marker + rails
+  marker.style.top=(markerTop-12)+'px';
+  rail.style.top=centers[0]+'px';
+  rail.style.height=(centers[centers.length-1]-centers[0])+'px';
+  railDone.style.top=centers[0]+'px';
+  railDone.style.height=Math.max(0,markerTop-centers[0])+'px';
+
+  // passed / next styling
+  const rows=[...tl.querySelectorAll('.station')];
+  rows.forEach((el,i)=>{
+    el.classList.toggle('passed', STOPS[i].date <= now);
+    el.classList.toggle('next', i===segIdx+1 && now<last && now>=first);
+  });
+
+  // progress bar (whole trip by time, skipping nothing)
+  const pct=Math.max(0,Math.min(1,(now-first)/(last-first)))*100;
+  elBar.style.width=pct+'%';
+}
+function tick(){ try{update();}catch(e){console.error(e);} }
+window.addEventListener('load',()=>{ tick(); setTimeout(tick,300); });
+window.addEventListener('resize',tick);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) tick(); });
+setInterval(tick,30000);
+tick();
+
+// ---- Offline indicator ----
+const pill=document.getElementById('offline-pill');
+function netState(){ pill.classList.toggle('show', !navigator.onLine); }
+window.addEventListener('online',netState); window.addEventListener('offline',netState); netState();
+
+// ---- Service worker ----
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./service-worker.js').catch(e=>console.warn('SW',e));
+  });
+}
+</script>
+</body>
+</html>
