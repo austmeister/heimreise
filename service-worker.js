@@ -1,6 +1,6 @@
 // Heimreise PWA service worker — cache-first, offline-ready.
 // Bump CACHE when assets change to force an update.
-const CACHE = 'heimreise-v4';
+const CACHE = 'heimreise-v5';
 const ASSETS = [
   './',
   './index.html',
